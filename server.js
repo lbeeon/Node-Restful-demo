@@ -36,40 +36,36 @@ app.get('/', function(req, res) {
 app.get('/setup', function(req, res) {
 
   // create a sample user
-  var nick = new User({ 
-    name: 'Nick Cerminara', 
-    password: 'password',
-    admin: true 
-  });
+  var nUser = 
+  [
+	new User({ 
+			id: "A123456789",
+			name: 'Nick Cerminara', 
+			password: 'password',
+			admin: true 
+	}),
+	new User({ 
+			id: "B123456789",
+			name: 'Nick Son', 
+			password: 'password',
+			admin: true 
+	})
+  ];
+  
 
   // save the sample user
-  nick.save(function(err) {
-    if (err) throw err;
-
-    console.log('User saved successfully');
+  for(var i=0; i<nUser.length; i++){
+	  nUser[i].save(function(err){
+		  if(err) throw err;
+	  });
     res.json({ success: true });
-  });
+	  
+  }
 });
 
 // API ROUTES -------------------
 // get an instance of the router for api routes
 var apiRoutes = express.Router(); 
-
-// TODO: route to authenticate a user (POST http://localhost:8080/api/authenticate)
-
-// TODO: route middleware to verify a token
-
-// route to show a random message (GET http://localhost:8080/api/)
-apiRoutes.get('/', function(req, res) {
-  res.json({ message: 'Welcome to the coolest API on earth!' });
-});
-
-// route to return all users (GET http://localhost:8080/api/users)
-apiRoutes.get('/users', function(req, res) {
-  User.find({}, function(err, users) {
-    res.json(users);
-  });
-});   
 
 // route to authenticate a user (POST http://localhost:8080/api/authenticate)
 apiRoutes.post('/authenticate', function(req, res) {
@@ -108,6 +104,120 @@ apiRoutes.post('/authenticate', function(req, res) {
 
   });
 });
+
+// route middleware to verify a token
+apiRoutes.use(function(req, res, next) {
+
+  // check header or url parameters or post parameters for token
+  var token = req.body.token || req.query.token || req.headers['x-access-token'];
+
+  // decode token
+  if (token) {
+
+    // verifies secret and checks exp
+    jwt.verify(token, app.get('superSecret'), function(err, decoded) {      
+      if (err) {
+        return res.json({ success: false, message: 'Failed to authenticate token.' });    
+      } else {
+        // if everything is good, save to request for use in other routes
+        req.decoded = decoded;    
+        next();
+      }
+    });
+
+  } else {
+
+    // if there is no token
+    // return an error
+    return res.status(403).send({ 
+        success: false, 
+        message: 'No token provided.' 
+    });
+    
+  }
+});
+
+// route to show a random message (GET http://localhost:8080/api/)
+apiRoutes.get('/', function(req, res) {
+  res.json({ message: 'Welcome to the coolest API on earth!' });
+});
+
+// route to insert user (POST)
+apiRoutes.post('/users', function(req, res){
+	if(req.body == 0){
+		return res.status(403).send({
+			success: false,
+			message: 'Invaild access'
+		});
+	}
+	var Insert = new User(req.body);
+	Insert.save(function(err){
+		if(err) throw err;
+		res.json({ success: true });
+	});
+});
+
+// route read by id (GET)
+apiRoutes.get('/users/:id', function(req, res){
+	var id = req.params.id;
+    console.log('id: ' + id);
+	var query = { "id": id};
+	User.find(query, function(err, user){
+		res.json(user);
+	});
+});
+
+// route update user (PUT)
+apiRoutes.put('/users/:id', function(req, res){
+	var id = req.params.id;
+	var query = { "id": id};
+	console.log(req.body);
+	if(req.body.length == 0) {
+		return res.status(403).send({
+			success: false,
+			message: 'Invaild access'
+		});
+	}
+
+	var UpdateUser = req.body;
+
+	User.update(query, UpdateUser,{ multi: true }, function(err, updated){
+		if(err) throw err;
+		console.dir(updated);
+		return res.json({
+          success: true,
+          message: 'Update Success!!'
+        });
+	});
+});
+
+// route delete user (DELETE)
+apiRoutes.delete('/users/:id', function(req, res){
+	var id = req.params.id;
+	if(!id){
+		return res.status(403).send({
+			success: false,
+			message: 'Invaild access'
+		});
+	}
+	var query = { "id": id};
+	User.remove(query, function(err){
+		if(err) throw err;
+		console.log("Delete Success!!")
+		res.json({
+          success: true,
+          message: 'Delete Success!!'
+		});
+	});
+});
+
+// route to return all users (GET http://localhost:8080/api/users)
+apiRoutes.get('/users', function(req, res) {
+  User.find({}, function(err, users) {
+    res.json(users);
+  });
+});   
+
 
 // apply the routes to our application with the prefix /api
 app.use('/api', apiRoutes);
