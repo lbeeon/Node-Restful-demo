@@ -63,6 +63,82 @@ app.get('/setup', function(req, res) {
   }
 });
 
+// route read all user (GET)
+app.get('/users', function(req, res){
+  User.find({}, function(err, users) {
+    res.json(users);
+  });
+});
+
+// route read by id (GET)
+app.get('/users/:id', function(req, res){
+	var id = req.params.id;
+    console.log('id: ' + id);
+	var query = { "id": id};
+	User.find(query, function(err, user){
+		res.json(user);
+	});
+});
+
+// route to insert user (POST)
+app.post('/users', function(req, res){
+	if(req.body == 0){
+		return res.status(403).send({
+			success: false,
+			message: 'Invaild access'
+		});
+	}
+	var Insert = new User(req.body);
+	Insert.save(function(err){
+		if(err) throw err;
+		res.json({ success: true });
+	});
+});
+
+// route update user (PUT)
+app.put('/users/:id', function(req, res){
+	var id = req.params.id;
+	var query = { "id": id};
+	console.log(req.body);
+	if(req.body.length == 0) {
+		return res.status(403).send({
+			success: false,
+			message: 'Invaild access'
+		});
+	}
+
+	var UpdateUser = req.body;
+
+	User.update(query, UpdateUser,{ multi: true }, function(err, updated){
+		if(err) throw err;
+		console.dir(updated);
+		return res.json({
+          success: true,
+          message: 'Update Success!!'
+        });
+	});
+});
+
+// route delete user (DELETE)
+app.delete('/users/:id', function(req, res){
+	var id = req.params.id;
+	if(!id){
+		return res.status(403).send({
+			success: false,
+			message: 'Invaild access'
+		});
+	}
+	var query = { "id": id};
+	User.remove(query, function(err){
+		if(err) throw err;
+		console.log("Delete Success!!")
+		res.json({
+          success: true,
+          message: 'Delete Success!!'
+		});
+	});
+});
+
 // API ROUTES -------------------
 // get an instance of the router for api routes
 var apiRoutes = express.Router(); 
@@ -142,7 +218,24 @@ apiRoutes.get('/', function(req, res) {
   res.json({ message: 'Welcome to the coolest API on earth!' });
 });
 
-// route to insert user (POST)
+// route to return all users with token (GET http://localhost:8080/api/users)
+apiRoutes.get('/users', function(req, res) {
+  User.find({}, function(err, users) {
+    res.json(users);
+  });
+});   
+
+// route read by id with token (GET)
+apiRoutes.get('/users/:id', function(req, res){
+	var id = req.params.id;
+    console.log('id: ' + id);
+	var query = { "id": id};
+	User.find(query, function(err, user){
+		res.json(user);
+	});
+});
+
+// route to insert user with token (POST)
 apiRoutes.post('/users', function(req, res){
 	if(req.body == 0){
 		return res.status(403).send({
@@ -157,17 +250,7 @@ apiRoutes.post('/users', function(req, res){
 	});
 });
 
-// route read by id (GET)
-apiRoutes.get('/users/:id', function(req, res){
-	var id = req.params.id;
-    console.log('id: ' + id);
-	var query = { "id": id};
-	User.find(query, function(err, user){
-		res.json(user);
-	});
-});
-
-// route update user (PUT)
+// route update user with token (PUT)
 apiRoutes.put('/users/:id', function(req, res){
 	var id = req.params.id;
 	var query = { "id": id};
@@ -191,7 +274,7 @@ apiRoutes.put('/users/:id', function(req, res){
 	});
 });
 
-// route delete user (DELETE)
+// route delete user with token (DELETE)
 apiRoutes.delete('/users/:id', function(req, res){
 	var id = req.params.id;
 	if(!id){
@@ -210,14 +293,6 @@ apiRoutes.delete('/users/:id', function(req, res){
 		});
 	});
 });
-
-// route to return all users (GET http://localhost:8080/api/users)
-apiRoutes.get('/users', function(req, res) {
-  User.find({}, function(err, users) {
-    res.json(users);
-  });
-});   
-
 
 // apply the routes to our application with the prefix /api
 app.use('/api', apiRoutes);
